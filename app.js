@@ -22,6 +22,14 @@ app.post('/todos', (req, res) => {
   res.status(201).json(newTodo); // Echo back
 });
 
+// GET Active tasks
+app.get('/todos/active', (req, res) => {
+  const active = todos.filter((t) => !t.completed); // Array.filter()
+  if (!active) return res.status(404).json({ message: 'No completed tasks found' });
+  res.status(200).json(active); // Send array as JSON
+});
+
+
 // GET All – Read ID
 app.get('/todos/:id', (req, res) => {
   const todo = todos.find((t) => t.id === parseInt(req.params.id)); // Array.find()
