@@ -4,7 +4,7 @@ app.use(express.json()); // Parse JSON bodies
 
 let todos = [
   { id: 1, task: 'Learn Node.js', completed: false },
-  { id: 2, task: 'Build CRUD API', completed: false },
+  { id: 2, task: 'Build CRUD API', completed: true },
 ];
 
 // GET All – Read
@@ -12,12 +12,13 @@ app.get('/todos', (req, res) => {
   res.status(200).json(todos); // Send array as JSON
 });
 
-// POST New – Create
-app.post('/todos', (req, res) => {
-  const newTodo = { id: todos.length + 1, ...req.body }; // Auto-ID
-  todos.push(newTodo);
-  res.status(201).json(newTodo); // Echo back
+// GET All – Read ID
+app.get('/todos/:id', (req, res) => {
+  const todo = todos.find((t) => t.id === parseInt(req.params.id)); // Array.find()
+  if (!todo) return res.status(404).json({ message: 'Todo not found' });
+  res.status(200).json(todo); // Send array as JSON
 });
+
 
 // PATCH Update – Partial
 app.patch('/todos/:id', (req, res) => {
