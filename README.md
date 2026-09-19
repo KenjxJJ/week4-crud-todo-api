@@ -1,4 +1,4 @@
-# Week 3: CRUD Todo API
+# Week 4: CRUD Todo API
 
 A lightweight RESTful CRUD API for managing todos built with Node.js and Express.
 
