@@ -1,6 +1,10 @@
 const express = require('express');
 const app = express();
+// Middleware imports
+const logger = require('./middlewares/logger');
 app.use(express.json()); // Parse JSON bodies
+
+app.use(logger)
 
 let todos = [
   { id: 1, task: 'Learn Node.js', completed: false },
