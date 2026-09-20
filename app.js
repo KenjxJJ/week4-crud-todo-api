@@ -2,8 +2,9 @@ const express = require('express');
 const app = express();
 // Middleware imports
 const logger = require('./middlewares/logger');
-app.use(express.json()); // Parse JSON bodies
+const validateJoi = require('./middlewares/validator')
 
+app.use(express.json()); // Parse JSON bodies
 app.use(logger)
 
 let todos = [
@@ -18,12 +19,18 @@ app.get('/todos', (req, res) => {
 
 
 // POST New – Create
-app.post('/todos', (req, res) => {
+app.post('/todos', validateJoi, (req, res, next) => {
   // Check if task has been set
-  if (!req.body.task) return res.status(400).json({ message: 'Task is required' });
-  const newTodo = { id: todos.length + 1, ...req.body }; // Auto-ID
-  todos.push(newTodo);
-  res.status(201).json(newTodo); // Echo back
+  try {
+    if (!req.body.task) return res.status(400).json({ message: 'Task is required' });
+    const newTodo = { id: todos.length + 1, ...req.body }; // Auto-ID
+    todos.push(newTodo);
+    res.status(201).json(newTodo); // Echo back
+  }
+  catch (error) {
+    next(error)
+  }
+
 });
 
 // GET Active tasks
@@ -43,11 +50,16 @@ app.get('/todos/:id', (req, res) => {
 
 
 // PATCH Update – Partial
-app.patch('/todos/:id', (req, res) => {
-  const todo = todos.find((t) => t.id === parseInt(req.params.id)); // Array.find()
-  if (!todo) return res.status(404).json({ message: 'Todo not found' });
-  Object.assign(todo, req.body); // Merge: e.g., {completed: true}
-  res.status(200).json(todo);
+app.patch('/todos/:id', validateJoi, (req, res, next) => {
+  try {
+    const todo = todos.find((t) => t.id === parseInt(req.params.id)); // Array.find()
+    if (!todo) return res.status(404).json({ message: 'Todo not found' });
+    Object.assign(todo, req.body); // Merge: e.g., {completed: true}
+    res.status(200).json(todo);
+  } catch (error) {
+    next(error)
+  }
+
 });
 
 // DELETE Remove
