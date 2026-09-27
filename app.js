@@ -1,101 +1,124 @@
+require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
 const app = express();
+
+// Database Connection
+const connectDB = require('./database/db');
+connectDB();
+
+// Models
+const Todo = require('./models/todo');
+
 // Middleware imports
 const logger = require('./middlewares/logger');
-const validateJoi = require('./middlewares/validator')
-const errorHandler = require('./middlewares/errorHandler')
+const {
+  validateCreateTodo,
+  validateUpdateTodo,
+  validateObjectId,
+} = require('./middlewares/validator');
+const errorHandler = require('./middlewares/errorHandler');
 
 app.use(express.json()); // Parse JSON bodies
-app.use(logger)
-
-let todos = [
-  { id: 1, task: 'Learn Node.js', completed: false },
-  { id: 2, task: 'Build CRUD API', completed: true },
-];
+app.use(logger);
 
 // GET All – Read
-app.get('/todos', (req, res) => {
-  res.status(200).json(todos); // Send array as JSON
+app.get('/todos', async (req, res, next) => {
+  try {
+    const todos = await Todo.find().sort({ createdAt: -1 });
+    res.status(200).json(todos);
+  } catch (error) {
+    next(error);
+  }
 });
 
-
 // POST New – Create
-app.post('/todos', validateJoi, (req, res, next) => {
-  // Check if task has been set
+app.post('/todos', validateCreateTodo, async (req, res, next) => {
   try {
-    if (!req.body.task) return res.status(400).json({ message: 'Task is required' });
-    const newTodo = { id: todos.length + 1, ...req.body }; // Auto-ID
-    todos.push(newTodo);
-    res.status(201).json(newTodo); // Echo back
+    const { task, completed } = req.body;
+    const newTodo = new Todo({
+      task,
+      completed,
+    });
+    await newTodo.save();
+    res.status(201).json(newTodo);
+  } catch (error) {
+    next(error);
   }
-  catch (error) {
-    next(error)
-  }
-
 });
 
 // GET Active tasks
-app.get('/todos/active', (req, res) => {
-  const active = todos.filter((t) => !t.completed); // Array.filter()
-  if (!active) return res.status(404).json({ message: 'No completed tasks found' });
-  res.status(200).json(active); // Send array as JSON
+app.get('/todos/active', async (req, res, next) => {
+  try {
+    const active = await Todo.find({ completed: false }).sort({ createdAt: -1 });
+    res.status(200).json(active);
+  } catch (error) {
+    next(error);
+  }
 });
 
 // GET Completed tasks
-app.get('/todos/completed', (req, res) => {
-  const completed = todos.filter((t) => t.completed);
-  res.status(200).json(completed); // Custom Read!
-});
-
-
-// GET All – Read ID
-app.get('/todos/:id', validateJoi, (req, res, next) => {
+app.get('/todos/completed', async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id)
-    if (isNaN(id)) {
-      throw new Error(`Invalid ID ${id}`)
-    }
-    const todo = todos.find((t) => t.id === id); // Array.find()
-    if (!todo) return res.status(404).json({ message: 'Todo not found' });
-    res.status(200).json(todo); // Send array as JSON
+    const completed = await Todo.find({ completed: true }).sort({ createdAt: -1 });
+    res.status(200).json(completed);
   } catch (error) {
-    next(error)
+    next(error);
   }
 });
 
-
-// PATCH Update – Partial
-app.patch('/todos/:id', validateJoi, (req, res, next) => {
+// GET Single Todo by ID
+app.get('/todos/:id', validateObjectId, async (req, res, next) => {
   try {
-    const todo = todos.find((t) => t.id === parseInt(req.params.id)); // Array.find()
-    if (!todo) return res.status(404).json({ message: 'Todo not found' });
-    Object.assign(todo, req.body); // Merge: e.g., {completed: true}
+    const todo = await Todo.findById(req.params.id);
+    if (!todo) {
+      return res.status(404).json({ message: 'Todo not found' });
+    }
     res.status(200).json(todo);
   } catch (error) {
-    next(error)
+    next(error);
   }
+});
 
+// PATCH Update – Partial
+app.patch('/todos/:id', validateObjectId, validateUpdateTodo, async (req, res, next) => {
+  try {
+    const todo = await Todo.findByIdAndUpdate(req.params.id, req.body, {
+      returnDocument: 'after',
+      runValidators: true,
+    });
+    if (!todo) {
+      return res.status(404).json({ message: 'Todo not found' });
+    }
+    res.status(200).json(todo);
+  } catch (error) {
+    next(error);
+  }
 });
 
 // DELETE Remove
-app.delete('/todos/:id', (req, res, next) => {
+app.delete('/todos/:id', validateObjectId, async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      throw new Error(`Invalid ID ${id}`)
-    } 
-    const initialLength = todos.length;
-    todos = todos.filter((t) => t.id !== id); // Array.filter() – non-destructive
-    if (todos.length === initialLength)
-      return res.status(404).json({ error: 'Not found' });
-    res.status(204).send(); // Silent success
+    const todo = await Todo.findByIdAndDelete(req.params.id);
+    if (!todo) {
+      return res.status(404).json({ error: 'Todo not found' });
+    }
+    res.status(204).send();
   } catch (error) {
-    next(error)
+    next(error);
   }
 });
 
 // Global Error Handler (Catch-all - Add LAST in app.js)
 app.use(errorHandler);
 
-const PORT = 3002;
-app.listen(PORT, () => console.log(`Server on port ${PORT}`));
+// Graceful Disconnect
+process.on('SIGINT', async () => {
+  console.log('\nClosing MongoDB connection...');
+  await mongoose.connection.close();
+  console.log('MongoDB connection closed. Exiting process.');
+  process.exit(0);
+});
+
+const PORT = process.env.PORT || 3002;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
