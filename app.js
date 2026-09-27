@@ -22,10 +22,17 @@ const errorHandler = require('./middlewares/errorHandler');
 app.use(express.json()); // Parse JSON bodies
 app.use(logger);
 
-// GET All – Read
+// GET All – Read with dynamic query search (e.g. /todos?completed=false)
 app.get('/todos', async (req, res, next) => {
   try {
-    const todos = await Todo.find().sort({ createdAt: -1 });
+    const filter = {};
+
+    // Filter by completed status: /todos?completed=true or /todos?completed=false
+    if (req.query.completed !== undefined) {
+      filter.completed = req.query.completed === 'true';
+    }
+
+    const todos = await Todo.find(filter).sort({ createdAt: -1 });
     res.status(200).json(todos);
   } catch (error) {
     next(error);

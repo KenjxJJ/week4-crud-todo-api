@@ -22,7 +22,7 @@ A lightweight RESTful CRUD API for managing todos built with Node.js and Express
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/todos` | Retrieve all todos |
+| `GET` | `/todos` | Retrieve all todos (supports `?completed=false` or `?completed=true`|
 | `GET` | `/todos/active` | Retrieve all active (uncompleted) todos |
 | `GET` | `/todos/completed` | Retrieve all completed todos |
 | `GET` | `/todos/:id` | Retrieve a single todo by ID |
